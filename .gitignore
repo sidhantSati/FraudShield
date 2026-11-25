@@ -1,0 +1,44 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# Virtual environments and packaging output
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE/editor settings
+.idea/
+.vscode/
+
+# Local credentials and Streamlit secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+secrets.toml
+
+# Logs and runtime databases
+logs/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# Locally downloaded reference data and uploaded files
+data/raw/creditcard.csv
+data/uploads/
+
+# Personal archives
+*.zip

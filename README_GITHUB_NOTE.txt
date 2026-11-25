@@ -1,0 +1,1 @@
+Before making this repository public, confirm that you have permission to redistribute all included datasets and the PDF report. The .gitignore excludes local databases, logs, virtual environments, secrets, and generated per-transaction scores. No license has been added; choose one only if you have rights to license the project materials. See docs/GITHUB_PUBLISHING.md.
