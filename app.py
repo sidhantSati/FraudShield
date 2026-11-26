@@ -110,7 +110,7 @@ def metric_card(label: str, value: str, note: str = "") -> None:
 
 def plotly_chart(fig, key: str) -> None:
     fig.update_layout(template="plotly_white", font_family="DM Sans", margin=dict(l=8, r=8, t=42, b=8), height=340)
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    st.plotly_chart(fig, width="stretch", key=key)
 
 
 def render_sidebar() -> tuple[str, str, str, float, str, str, str]:
@@ -216,7 +216,7 @@ def render_dashboard() -> None:
         plotly_chart(fig, "location-rate")
     st.markdown('<div class="section-kicker">Priority queue preview</div>', unsafe_allow_html=True)
     queue = high.sort_values("risk_score", ascending=False).head(10)
-    st.dataframe(safe_display_columns(queue), use_container_width=True, hide_index=True)
+    st.dataframe(safe_display_columns(queue), width="stretch", hide_index=True)
 
 
 def render_data_preparation() -> None:
@@ -273,7 +273,7 @@ def render_live_scoring() -> None:
             location = st.selectbox("Location", options["location"])
             is_international = st.toggle("International transaction", value=False)
             suspicious_keyword = st.selectbox("Suspicious keyword signal", options["suspicious_keyword"])
-        submitted = st.form_submit_button("Score transaction", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Score transaction", type="primary", width="stretch")
     if submitted:
         row = single_transaction(amount, merchant_category, payment_method, device_type, location, int(is_international), previous_transactions, average_spend, account_age_days, suspicious_keyword)
         score = float(bundle.pipeline.predict_proba(row[get_feature_columns(row)])[:, 1][0])
@@ -289,7 +289,7 @@ def render_live_scoring() -> None:
             if go:
                 fig = go.Figure(go.Indicator(mode="gauge+number", value=score * 100, number={"suffix":"%"}, title={"text":"Fraud risk score"}, gauge={"axis":{"range":[0,100]}, "bar":{"color":"#e11d48" if score >= threshold else "#0f766e"}, "steps":[{"range":[0,threshold*100],"color":"#dcfce7"},{"range":[threshold*100,100],"color":"#ffe4e6"}]}))
                 fig.update_layout(height=280, margin=dict(l=20,r=20,t=50,b=20))
-                st.plotly_chart(fig, use_container_width=True, key="live-gauge")
+                st.plotly_chart(fig, width="stretch", key="live-gauge")
         with right:
             st.markdown("#### Review signals")
             for title, detail in explain_transaction(row, score, threshold):
@@ -313,7 +313,7 @@ def render_batch_review() -> None:
     with c3: category_filter = st.multiselect("Merchant category", sorted(working["merchant_category"].unique()), default=sorted(working["merchant_category"].unique()))
     view = working[working["risk_band"].isin(risk_filter) & working["location"].isin(location_filter) & working["merchant_category"].isin(category_filter)].sort_values("risk_score", ascending=False)
     st.markdown(f"### {len(view):,} transactions in view")
-    st.dataframe(safe_display_columns(view.head(500)), use_container_width=True, hide_index=True, height=470)
+    st.dataframe(safe_display_columns(view.head(500)), width="stretch", hide_index=True, height=470)
     export = view.copy()
     export["transaction_datetime"] = export["transaction_datetime"].dt.strftime("%Y-%m-%d %H:%M:%S")
     st.download_button("Download review queue (CSV)", export.to_csv(index=False).encode("utf-8"), "fraud_review_queue.csv", "text/csv", type="primary")
@@ -346,7 +346,7 @@ def render_model_lab() -> None:
         report = pd.DataFrame(m["classification_report"]).T.reset_index().rename(columns={"index":"class"})
         report = report[report["class"].isin(["Legitimate", "Fraud"])][["class", "precision", "recall", "f1-score", "support"]]
         st.markdown("#### Classification report")
-        st.dataframe(report.style.format({"precision":"{:.3f}", "recall":"{:.3f}", "f1-score":"{:.3f}", "support":"{:.0f}"}), use_container_width=True, hide_index=True)
+        st.dataframe(report.style.format({"precision":"{:.3f}", "recall":"{:.3f}", "f1-score":"{:.3f}", "support":"{:.0f}"}), width="stretch", hide_index=True)
         st.markdown('<div class="callout warning"><b>Metric interpretation:</b> in fraud detection, accuracy can be misleading when fraud is rare. Precision, recall, average precision, and the chosen operating threshold should be discussed together.</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-kicker">PDF model comparison</div><h2>Six-model benchmark</h2>', unsafe_allow_html=True)
     st.caption("This benchmark evaluates the PDF-requested classifiers on the same stratified holdout. Larger datasets are capped at 12,000 rows for interactive responsiveness.")
@@ -356,7 +356,7 @@ def render_model_lab() -> None:
         st.session_state["comparison"] = comparison
     if "comparison" in st.session_state:
         comparison = st.session_state["comparison"]
-        st.dataframe(comparison.style.format({col: "{:.3f}" for col in comparison.columns if col != "Model"}), use_container_width=True, hide_index=True)
+        st.dataframe(comparison.style.format({col: "{:.3f}" for col in comparison.columns if col != "Model"}), width="stretch", hide_index=True)
         fig = px.bar(comparison, x="Model", y="ROC-AUC", color="ROC-AUC", color_continuous_scale="Teal", title="ROC-AUC comparison")
         plotly_chart(fig, "model-comparison")
     st.markdown('<div class="section-kicker">Hyperparameter tuning</div><h2>Search for a stronger operating model</h2>', unsafe_allow_html=True)
@@ -400,7 +400,7 @@ def render_streaming_monitor() -> None:
         if alerts:
             alert_df = pd.DataFrame(alerts).sort_values("risk_score", ascending=False)
             st.markdown("#### Generated alert queue")
-            st.dataframe(safe_display_columns(alert_df), use_container_width=True, hide_index=True)
+            st.dataframe(safe_display_columns(alert_df), width="stretch", hide_index=True)
             st.download_button("Download generated alerts", alert_df.to_csv(index=False).encode("utf-8"), "stream_alerts.csv", "text/csv")
         else:
             st.info("No events crossed the configured threshold in this simulation.")
@@ -435,7 +435,7 @@ def render_realtime_operations() -> None:
             alert_frame = pd.DataFrame(alerts_data)
             alert_frame["risk_score"] = alert_frame["risk_score"].map(lambda value: f"{value:.1%}")
             alert_frame["received_at"] = pd.to_datetime(alert_frame["received_at"], errors="coerce").dt.strftime("%d %b %H:%M:%S")
-            st.dataframe(alert_frame, use_container_width=True, hide_index=True)
+            st.dataframe(alert_frame, width="stretch", hide_index=True)
         else:
             st.info("The API is online but no transactions have been received yet.")
 
@@ -471,7 +471,7 @@ def render_notes() -> None:
         ["Synthetic banking", "Fraud_Label", "Transaction_Amount, Account_Balance, Device_Type, ..."],
         ["Supplied credit card", "IsFraud", "Amount, TransactionDate, MerchantID, TransactionType, ..."],
     ], columns=["Profile", "Target column", "Required signal family"])
-    st.dataframe(contracts, use_container_width=True, hide_index=True)
+    st.dataframe(contracts, width="stretch", hide_index=True)
     st.markdown('<div class="section-kicker">Future enhancements</div>', unsafe_allow_html=True)
     st.markdown("""
     - Add LSTM/autoencoder experiments as optional deep-learning extensions.
@@ -502,3 +502,4 @@ elif page == "Real-time Operations":
     render_realtime_operations()
 else:
     render_notes()
+
