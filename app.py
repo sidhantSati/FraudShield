@@ -122,12 +122,12 @@ def render_sidebar() -> tuple[str, str, str, float, str, str, str]:
         st.divider()
         st.markdown("### Model controls")
         dataset_name = st.selectbox("Dataset", list(DATASETS.keys()), index=0)
-        model_name = st.selectbox("Scoring model", MODEL_NAMES, index=0)
+        model_name = st.selectbox("Scoring model", MODEL_NAMES, index=4)
         scaling = st.selectbox("Scaling", SCALING_OPTIONS, index=0)
         balance_method = st.selectbox("Class balancing", BALANCE_OPTIONS, index=0)
         threshold_percent = st.slider("Fraud alert threshold", 10, 90, 50, 5, format="%d%%")
         threshold = threshold_percent / 100.0
-        st.caption("The default model is Logistic Regression for faster cloud startup. You can switch models here. Lower thresholds catch more suspicious activity but may increase false positives. SMOTE and undersampling run inside the training pipeline.")
+        st.caption("Lower thresholds catch more suspicious activity but may increase false positives. SMOTE and undersampling run inside the training pipeline.")
         realtime_api_url = st.text_input("Real-time API URL", "http://127.0.0.1:8000")
         st.divider()
         st.markdown('<div class="small">Environment<br><b>Offline demo • v2.0</b><br>Model retrains automatically when controls change.</div>', unsafe_allow_html=True)
@@ -136,24 +136,27 @@ def render_sidebar() -> tuple[str, str, str, float, str, str, str]:
 
 page, dataset_name, model_name, threshold, scaling, balance_method, realtime_api_url = render_sidebar()
 
-# Startup is guarded so data/model errors are displayed in the app instead of silently crashing.
 try:
-    with st.spinner("Loading transaction dataset..."):
+    with st.spinner("Loading dataset..."):
         df = get_dataset(dataset_name)
-    if df is None or df.empty:
-        st.error("The selected dataset is empty or could not be loaded.")
-        st.stop()
-    if "target" not in df.columns:
-        st.error("The dataset is missing the required target column.")
-        st.stop()
-    with st.spinner(f"Training {model_name} model..."):
+
+    st.success(f"Dataset loaded successfully: {len(df):,} rows")
+
+    with st.spinner(f"Training {model_name}..."):
         bundle = get_model(dataset_name, model_name, scaling, balance_method)
+
+    st.success("Model trained successfully")
+
     with st.spinner("Scoring transactions..."):
         scored = score_transactions(bundle, df, threshold)
+
+    st.success("Transactions scored successfully")
+
     fraud_rate = float(df["target"].mean())
-except Exception as startup_error:
-    st.error("FraudShield startup failed. Details:")
-    st.exception(startup_error)
+
+except Exception as e:
+    st.error("FraudShield startup failed")
+    st.exception(e)
     st.stop()
 
 
@@ -500,26 +503,22 @@ def render_notes() -> None:
     st.markdown('<div class="callout danger"><b>Production caution:</b> never auto-decline a customer solely from this demo score. Fraud operations should combine model output with policy rules, analyst review, and documented escalation paths.</div>', unsafe_allow_html=True)
 
 
-try:
-    if page == "Overview":
-        render_overview()
-    elif page == "Risk Dashboard":
-        render_dashboard()
-    elif page == "Data Preparation":
-        render_data_preparation()
-    elif page == "Live Scoring":
-        render_live_scoring()
-    elif page == "Batch Review":
-        render_batch_review()
-    elif page == "Model Lab":
-        render_model_lab()
-    elif page == "Streaming Monitor":
-        render_streaming_monitor()
-    elif page == "Real-time Operations":
-        render_realtime_operations()
-    else:
-        render_notes()
-except Exception as page_error:
-    st.error(f"An error occurred while rendering the {page} page.")
-    st.exception(page_error)
+if page == "Overview":
+    render_overview()
+elif page == "Risk Dashboard":
+    render_dashboard()
+elif page == "Data Preparation":
+    render_data_preparation()
+elif page == "Live Scoring":
+    render_live_scoring()
+elif page == "Batch Review":
+    render_batch_review()
+elif page == "Model Lab":
+    render_model_lab()
+elif page == "Streaming Monitor":
+    render_streaming_monitor()
+elif page == "Real-time Operations":
+    render_realtime_operations()
+else:
+    render_notes()
 
