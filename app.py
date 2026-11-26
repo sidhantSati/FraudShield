@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 import time
+import logging
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -9,27 +11,42 @@ import pandas as pd
 import requests
 import streamlit as st
 
+logging.basicConfig(level=logging.INFO, format='[FraudShield] %(asctime)s %(levelname)s %(message)s')
+logger = logging.getLogger('FraudShield')
+logger.info('Starting app.py import')
+st.set_page_config(page_title="FraudShield | Fraud Detection System", page_icon="🛡️", layout="wide", initial_sidebar_state="expanded")
+
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from src.fraud_core import (  # noqa: E402
-    BALANCE_OPTIONS,
-    DATASETS,
-    FEATURE_COLUMNS,
-    MODEL_NAMES,
-    SCALING_OPTIONS,
-    compare_models,
-    explain_transaction,
-    get_feature_columns,
-    load_dataset,
-    make_dimension_reduction,
-    normalize_dataset,
-    safe_display_columns,
-    score_transactions,
-    single_transaction,
-    tune_model,
-    train_model,
-)
+logger.info('Importing src.fraud_core')
+try:
+    from src.fraud_core import (  # noqa: E402
+        BALANCE_OPTIONS,
+        DATASETS,
+        FEATURE_COLUMNS,
+        MODEL_NAMES,
+        SCALING_OPTIONS,
+        compare_models,
+        explain_transaction,
+        get_feature_columns,
+        load_dataset,
+        make_dimension_reduction,
+        normalize_dataset,
+        safe_display_columns,
+        score_transactions,
+        single_transaction,
+        tune_model,
+        train_model,
+    )
+
+except Exception:
+    logger.exception('src.fraud_core import failed')
+    st.error('FraudShield could not import its core module. Check the Cloud logs below for the exact traceback.')
+    st.code(traceback.format_exc())
+    st.stop()
+
+logger.info('Core imports completed')
 
 try:
     import plotly.express as px
@@ -39,7 +56,6 @@ except ImportError:  # pragma: no cover - gives a clearer local error
     go = None
 
 
-st.set_page_config(page_title="FraudShield | Fraud Detection System", page_icon="🛡️", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown(
     """
@@ -134,24 +150,33 @@ def render_sidebar() -> tuple[str, str, str, float, str, str, str]:
     return page, dataset_name, model_name, threshold, scaling, balance_method, realtime_api_url
 
 
+logger.info('Rendering sidebar')
 page, dataset_name, model_name, threshold, scaling, balance_method, realtime_api_url = render_sidebar()
+logger.info('Sidebar ready; selected dataset=%s model=%s', dataset_name, model_name)
 
 # Startup is guarded so data/model errors are displayed in the app instead of silently crashing.
 try:
+    logger.info('Loading dataset: %s', dataset_name)
     with st.spinner("Loading transaction dataset..."):
         df = get_dataset(dataset_name)
+    logger.info('Dataset loaded: shape=%s', getattr(df, 'shape', None))
     if df is None or df.empty:
         st.error("The selected dataset is empty or could not be loaded.")
         st.stop()
     if "target" not in df.columns:
         st.error("The dataset is missing the required target column.")
         st.stop()
+    logger.info('Training model: %s', model_name)
     with st.spinner(f"Training {model_name} model..."):
         bundle = get_model(dataset_name, model_name, scaling, balance_method)
+    logger.info('Model training complete')
+    logger.info('Scoring transactions')
     with st.spinner("Scoring transactions..."):
         scored = score_transactions(bundle, df, threshold)
+    logger.info('Scoring complete: rows=%s', len(scored))
     fraud_rate = float(df["target"].mean())
 except Exception as startup_error:
+    logger.exception('Startup failed')
     st.error("FraudShield startup failed. Details:")
     st.exception(startup_error)
     st.stop()
@@ -500,6 +525,7 @@ def render_notes() -> None:
     st.markdown('<div class="callout danger"><b>Production caution:</b> never auto-decline a customer solely from this demo score. Fraud operations should combine model output with policy rules, analyst review, and documented escalation paths.</div>', unsafe_allow_html=True)
 
 
+logger.info('Rendering page: %s', page)
 try:
     if page == "Overview":
         render_overview()
@@ -520,6 +546,7 @@ try:
     else:
         render_notes()
 except Exception as page_error:
+    logger.exception('Page rendering failed: %s', page)
     st.error(f"An error occurred while rendering the {page} page.")
     st.exception(page_error)
 
